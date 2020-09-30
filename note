@@ -1,0 +1,11 @@
+Button:
+
+
+                                background_color: (0,0,0,0)
+                                size_hint:(.05,1)
+                                canvas:
+                                    Rectangle:
+                                        size: (40,40) # choose a value of a which fit the most with your button
+                                        pos: (self.pos[0]+self.size[0]/2.0) - 20, (self.pos[1]+self.size[1]/2.0) - 20
+                                        source: "./add-user-male--v1.png"
+                                on_release:root.add_new_vendor()
