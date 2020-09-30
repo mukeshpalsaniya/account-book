@@ -463,7 +463,8 @@ class OperatorWindow(BoxLayout):
             # products_container.add_widget(details)
             self.popup = Popup(title='Exit Confirmation!!',
                                content=details,
-                               size_hint=(.8, .25))
+                               size_hint=(.8, .25),
+                           pos_hint={'top':.9})
 
             self.popup.open()
             lb4 = Label(text='[color=ff3333]Are You Sure to Exit?[/color][color=3333ff][/color]' + "\n\n",
@@ -648,7 +649,8 @@ class OperatorWindow(BoxLayout):
             # products_container.add_widget(details)
             self.popup = Popup(title='Vendor',
                                content=details,
-                               size_hint=(.9, .9))
+                               size_hint=(.9, .9),
+                           pos_hint={'top':.9})
 
 
 
@@ -731,7 +733,8 @@ class OperatorWindow(BoxLayout):
         # products_container.add_widget(details)
         self.popup = Popup(title='Update Vendor',
                            content=details,
-                           size_hint=(.8, .4))
+                           size_hint=(.8, .4),
+                           pos_hint={'top':.9})
 
         self.popup.open()
 
@@ -745,6 +748,8 @@ class OperatorWindow(BoxLayout):
         value = [id]
         mycursor.execute(sql, value)
         code = mycursor.fetchall()
+
+
         for i in code:
             name_label = Label(text="Name", size_hint_y=.20, color=(0.06, 0.45, .45, 1), halign="left")
 
@@ -870,7 +875,17 @@ class OperatorWindow(BoxLayout):
             sql = "select * from book where vendor_id=? order by date desc"
             value = [self.vendor_id]
             mycursor.execute(sql, value)
-            code = mycursor.fetchall()
+            code1 = mycursor.fetchall()
+            code = []
+            for i in code1:
+                i = list(i)
+                i.append(datetime.strptime(i[5], '%d-%m-%Y').timestamp())
+                code.append(i)
+
+            def takelast(elem):
+                return elem[-1]
+
+            code.sort(key=takelast, reverse=True)
 
 
             if len(code) > 0:
@@ -905,7 +920,8 @@ class OperatorWindow(BoxLayout):
         # products_container.add_widget(details)
         self.popup = Popup(title='Edit Booking',
                            content=details,
-                           size_hint=(.8, .4))
+                           size_hint=(.8, .4),
+                           pos_hint={'top':.9})
 
         self.popup.open()
 
@@ -918,17 +934,22 @@ class OperatorWindow(BoxLayout):
         mycursor.execute(sql, value)
         code = mycursor.fetchall()
         for i in code:
-            metal_label = Label(text="Metal", size_hint_y=.20, color=(0.06, 0.45, .45, 1), halign="left")
+            metal_label = Label(text="Metal", size_hint_y=.15, color=(0.06, 0.45, .45, 1), halign="left")
 
-            metal_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
+            metal_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.15,
                                    hint_text="Metal",text=str(i[2]))
 
-            weight_label = Label(text="Weight", size_hint_y=.20, color=(0.06, 0.45, .45, 1))
-            weight_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
+            weight_label = Label(text="Weight", size_hint_y=.15, color=(0.06, 0.45, .45, 1))
+            weight_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.15,
                                     hint_text="Enter weight",text=str(i[3]))
-            rate_label = Label(text="Rate", size_hint_y=.20, color=(0.06, 0.45, .45, 1))
-            rate_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
+            rate_label = Label(text="Rate/gm", size_hint_y=.15, color=(0.06, 0.45, .45, 1))
+            rate_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.15,
                                   hint_text="Enter Rate",text=str(i[4]))
+            date_label = Label(text="Date", size_hint_y=.15, color=(0.06, 0.45, .45, 1))
+            date_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.15,
+                                  hint_text="Enter Date",
+                                  text = str(datetime.strftime(datetime.strptime(i[5], '%d-%m-%Y'), '%d-%m-%Y')))
+
 
             btn_close = Button(text="Close", on_release=self.popup.dismiss, size_hint_y=.20, color=(1, 1, 1, 1))
             btn_add = Button(text="Update Booking", size_hint_y=.20, color=(1, 1, 1, 1),
@@ -936,12 +957,14 @@ class OperatorWindow(BoxLayout):
 
                                                                    weight_text.text,
                                                                    rate_text.text,
+                                                                         date_text.text,
                                                                          str(i[0])
                                                                    ))
             details_label.add_widget(metal_label)
 
             details_label.add_widget(weight_label)
             details_label.add_widget(rate_label)
+            details_label.add_widget(date_label)
 
             details_label.add_widget(btn_close)
 
@@ -949,32 +972,33 @@ class OperatorWindow(BoxLayout):
 
             details_text.add_widget(weight_text)
             details_text.add_widget(rate_text)
+            details_text.add_widget(date_text)
 
             details_text.add_widget(btn_add)
 
             details.add_widget(details_label)
             details.add_widget(details_text)
 
-    def edit_booking_exec(self, metal, weight, rate,id):
+    def edit_booking_exec(self, metal, weight, rate,date,id):
         f_weight = "wrong"
 
         f_rate = "wrong"
-        # f_date = "wrong"
+        f_date = "wrong"
 
         try:
             f_weight = round(float(weight), 4)
             f_rate = round(float(rate), 2)
 
-            # f_date = datetime.strptime(date, '%d-%m-%Y')
+            f_date = datetime.strptime(date, '%d-%m-%Y')
 
         except:
             pass
-        if weight == "" or rate == "":
+        if weight == "" or rate == "" or date == "":
             f_weight = "wrong"
 
             f_rate = "wrong"
 
-        if metal == "" or f_rate == "wrong" or f_weight == "wrong":
+        if metal == "" or f_rate == "wrong" or f_date == "wrong" or f_weight == "wrong":
             self.notify.add_widget(Label(text="[color=#FF0000][b]Enter Correct Number \nor Metal[/b][/color]",
                                          markup=True))
             self.notify.open()
@@ -985,9 +1009,9 @@ class OperatorWindow(BoxLayout):
             mydb = DbConnect().db
             mycursor = mydb.cursor()
 
-            sql = "update book set metal=?,weight=?,rate=? where id=?"
+            sql = "update book set metal=?,weight=?,rate=?,date=? where id=?"
 
-            value = [metal, weight, rate, id]
+            value = [str(metal).upper(), weight, rate,date, id]
             mycursor.execute(sql, value)
             mydb.commit()
             self.popup.dismiss()
@@ -998,7 +1022,8 @@ class OperatorWindow(BoxLayout):
         # products_container.add_widget(details)
         self.popup = Popup(title='Delete Booking Confirmation!!',
                            content=details,
-                           size_hint=(.8, .25))
+                           size_hint=(.8, .25),
+                           pos_hint={'top':.9})
 
         self.popup.open()
         lb4 = Label(text='[color=ff3333]Are You Sure to Delete?[/color][color=3333ff][/color]'+"\n\n",
@@ -1106,7 +1131,17 @@ class OperatorWindow(BoxLayout):
             sql = "select * from delivery where vendor_id=? order by date desc"
             value = [self.vendor_id]
             mycursor.execute(sql, value)
-            code = mycursor.fetchall()
+            code1 = mycursor.fetchall()
+            code = []
+            for i in code1:
+                i = list(i)
+                i.append(datetime.strptime(i[4], '%d-%m-%Y').timestamp())
+                code.append(i)
+
+            def takelast(elem):
+                return elem[-1]
+
+            code.sort(key=takelast, reverse=True)
 
             if len(code) > 0:
                 for i in code:
@@ -1143,7 +1178,8 @@ class OperatorWindow(BoxLayout):
         # products_container.add_widget(details)
         self.popup = Popup(title='Delivery Payment Details',
                            content=details_master,
-                           size_hint=(1, .8))
+                           size_hint=(1, .8),
+                           pos_hint={'top':.9})
         self.popup.open()
         details = BoxLayout(size_hint=(1,.3), pos_hint={'top': 1})
         details_history = BoxLayout(size_hint=(1,.6), orientation="vertical")
@@ -1157,8 +1193,8 @@ class OperatorWindow(BoxLayout):
 
         add_label = Label(text="Amount", size_hint_y=.25, color=(0.06, 0.45, .45, 1))
         txt_add_payment = TextInput(hint_text="Enter Amount", multiline=False, size_hint_y=.25)
-        des_label = Label(text="Description", size_hint_y=.25, color=(0.06, 0.45, .45, 1))
-        txt_des = TextInput(hint_text="Description", multiline=False, size_hint_y=.25)
+        des_label = Label(text="Note", size_hint_y=.25, color=(0.06, 0.45, .45, 1))
+        txt_des = TextInput(hint_text="Note", multiline=False, size_hint_y=.25)
         date_label = Label(text="Date", size_hint_y=.25, color=(0.06, 0.45, .45, 1))
         date_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.25,
                               text=datetime.now().strftime("%d-%m-%Y"))
@@ -1187,7 +1223,17 @@ class OperatorWindow(BoxLayout):
               " date,id,des FROM payment where delivery_id=? and vendor_id=?"
         value = [id,self.vendor_id]
         mycursor.execute(sql, value)
-        code = mycursor.fetchall()
+        code1 = mycursor.fetchall()
+        code = []
+        for i in code1:
+            i=list(i)
+            i.append(datetime.strptime(i[4],'%d-%m-%Y').timestamp())
+            code.append(i)
+
+        def takelast(elem):
+            return elem[-1]
+        code.sort(key=takelast,reverse=True)
+
         total_amount = 0
         remaining = 0
 
@@ -1207,7 +1253,7 @@ class OperatorWindow(BoxLayout):
 
         layout.bind(minimum_height=layout.setter('height'))
         root.add_widget(layout)
-        show_summary = "Total Amount:" + str(total_amount) + " , Remaining: " + str(remaining)
+        show_summary = "Amount:" + str(total_amount) + " , Remaining: " + str(remaining)
         if id == 0:
             show_summary = "History"
 
@@ -1225,7 +1271,7 @@ class OperatorWindow(BoxLayout):
         def call_inner_function(des, args):
 
             description_layout.clear_widgets()
-            des_label = Label(text="Description:" + str(des), size_hint=(1, .1),
+            des_label = Label(text="Note:" + str(des), size_hint=(1, .1),
                               color=(0.06, 0.45, .45, 1))
             description_layout.add_widget(des_label)
 
@@ -1238,7 +1284,7 @@ class OperatorWindow(BoxLayout):
         btn4 = Button(text="Paying", size_hint=(.3,.1))
         #btn5 = Button(text="Remaining", size_hint=(.18,.1))
         btn6 = Button(text="Date", size_hint=(.3,.1))
-        btn7 = Button(text="Des", size_hint=(.2,.1))
+        btn7 = Button(text="Note", size_hint=(.2,.1))
         layout11.add_widget(btn1)
         #layout11.add_widget(btn2)
         #layout11.add_widget(btn3)
@@ -1250,7 +1296,7 @@ class OperatorWindow(BoxLayout):
         layout.add_widget(layout11)
         count = 1
 
-        for i in code:
+        for i in code1:
             layout1 = GridLayout(cols=7, spacing=2,
                              size_hint=(1, None), height=Window.height / 20)
             btn1 = Button(text="X", size_hint=(.2,.1),on_release=partial(self.delete_payment_item,int(i[5])))
@@ -1345,7 +1391,8 @@ class OperatorWindow(BoxLayout):
         # products_container.add_widget(details)
         self.popup = Popup(title='Edit Delivery',
                            content=details,
-                           size_hint=(.8, .4))
+                           size_hint=(.8, .4),
+                           pos_hint={'top':.9})
 
         self.popup.open()
 
@@ -1358,17 +1405,21 @@ class OperatorWindow(BoxLayout):
         mycursor.execute(sql, value)
         code = mycursor.fetchall()
         for i in code:
-            metal_label = Label(text="Metal", size_hint_y=.20, color=(0.06, 0.45, .45, 1), halign="left")
+            metal_label = Label(text="Metal", size_hint_y=.15, color=(0.06, 0.45, .45, 1), halign="left")
 
-            metal_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
+            metal_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.15,
                                    hint_text="Metal",text=str(i[5]))
 
-            weight_label = Label(text="Weight", size_hint_y=.20, color=(0.06, 0.45, .45, 1))
-            weight_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
+            weight_label = Label(text="Weight", size_hint_y=.15, color=(0.06, 0.45, .45, 1))
+            weight_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.15,
                                     hint_text="Enter weight",text=str(i[2]))
-            rate_label = Label(text="Rate", size_hint_y=.20, color=(0.06, 0.45, .45, 1))
-            rate_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
+            rate_label = Label(text="Rate/gm", size_hint_y=.15, color=(0.06, 0.45, .45, 1))
+            rate_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.15,
                                   hint_text="Enter Rate",text=str(i[3]))
+            date_label = Label(text="Date", size_hint_y=.15, color=(0.06, 0.45, .45, 1))
+            date_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.15,
+                                  hint_text="Enter Date",
+                                  text=str(datetime.strftime(datetime.strptime(i[4], '%d-%m-%Y'), '%d-%m-%Y')))
 
             btn_close = Button(text="Close", on_release=self.popup.dismiss, size_hint_y=.20, color=(1, 1, 1, 1))
             btn_add = Button(text="Update Delivery", size_hint_y=.20, color=(1, 1, 1, 1),
@@ -1376,12 +1427,14 @@ class OperatorWindow(BoxLayout):
 
                                                                    weight_text.text,
                                                                    rate_text.text,
+                                                                          date_text.text,
                                                                          str(i[0])
                                                                    ))
             details_label.add_widget(metal_label)
 
             details_label.add_widget(weight_label)
             details_label.add_widget(rate_label)
+            details_label.add_widget(date_label)
 
             details_label.add_widget(btn_close)
 
@@ -1389,32 +1442,33 @@ class OperatorWindow(BoxLayout):
 
             details_text.add_widget(weight_text)
             details_text.add_widget(rate_text)
+            details_text.add_widget(date_text)
 
             details_text.add_widget(btn_add)
 
             details.add_widget(details_label)
             details.add_widget(details_text)
 
-    def edit_delivery_exec(self, metal, weight, rate,id):
+    def edit_delivery_exec(self, metal, weight, rate,date,id):
         f_weight = "wrong"
 
         f_rate = "wrong"
-        # f_date = "wrong"
+        f_date = "wrong"
 
         try:
             f_weight = round(float(weight), 4)
             f_rate = round(float(rate), 2)
 
-            # f_date = datetime.strptime(date, '%d-%m-%Y')
+            f_date = datetime.strptime(date, '%d-%m-%Y')
 
         except:
             pass
-        if weight == "" or rate == "":
+        if weight == "" or rate == "" or date == "":
             f_weight = "wrong"
 
             f_rate = "wrong"
 
-        if metal == "" or f_rate == "wrong" or f_weight == "wrong":
+        if metal == "" or f_rate == "wrong" or f_date == "wrong" or f_weight == "wrong":
             self.notify.add_widget(Label(text="[color=#FF0000][b]Enter Correct Number \nor Metal[/b][/color]",
                                          markup=True))
             self.notify.open()
@@ -1425,9 +1479,9 @@ class OperatorWindow(BoxLayout):
             mydb = DbConnect().db
             mycursor = mydb.cursor()
 
-            sql = "update delivery set metal=?,weight=?,rate=? where id=?"
+            sql = "update delivery set metal=?,weight=?,rate=?,date=? where id=?"
 
-            value = [metal, weight, rate, id]
+            value = [str(metal).upper(), weight, rate,date, id]
             mycursor.execute(sql, value)
             sql = "update payment set amount=? where delivery_id=?"
 
@@ -1442,7 +1496,8 @@ class OperatorWindow(BoxLayout):
         # products_container.add_widget(details)
         self.popup = Popup(title='Delete Delivery Confirmation!!',
                            content=details,
-                           size_hint=(.8, .25))
+                           size_hint=(.8, .25),
+                           pos_hint={'top':.9})
 
         self.popup.open()
         lb4 = Label(text='[color=ff3333]Are You Sure to Delete?[/color][color=3333ff][/color]'+"\n\n",
@@ -1473,7 +1528,8 @@ class OperatorWindow(BoxLayout):
                 # products_container.add_widget(details)
                 self.popup = Popup(title='Add Extra Payment Confirmation!!',
                                    content=details,
-                                   size_hint=(.8, .25))
+                                   size_hint=(.8, .25),
+                           pos_hint={'top':.9})
 
                 self.popup.open()
                 lb4 = Label(text='[color=ff3333]Do you want to keep Extra \npayment of[/color][color=3333ff]'+str(code[0][0])+'[/color]' + "\n\n",
@@ -1551,7 +1607,17 @@ class OperatorWindow(BoxLayout):
             sql = "select * from approval where vendor_id=?"
             value = [self.vendor_id]
             mycursor.execute(sql, value)
-            code = mycursor.fetchall()
+            code1 = mycursor.fetchall()
+            code = []
+            for i in code1:
+                i = list(i)
+                i.append(datetime.strptime(i[4], '%d-%m-%Y').timestamp())
+                code.append(i)
+
+            def takelast(elem):
+                return elem[-1]
+
+            code.sort(key=takelast, reverse=True)
 
             if len(code) > 0:
                 for i in code:
@@ -1585,7 +1651,8 @@ class OperatorWindow(BoxLayout):
         # products_container.add_widget(details)
         self.popup = Popup(title='Approval Details',
                            content=details,
-                           size_hint=(.8, .4))
+                           size_hint=(.8, .4),
+                           pos_hint={'top':.9})
 
         self.popup.open()
 
@@ -1632,7 +1699,8 @@ class OperatorWindow(BoxLayout):
         # products_container.add_widget(details)
         self.popup = Popup(title='Edit Approval',
                            content=details,
-                           size_hint=(.8, .4))
+                           size_hint=(.8, .4),
+                           pos_hint={'top':.9})
 
         self.popup.open()
 
@@ -1645,10 +1713,14 @@ class OperatorWindow(BoxLayout):
         mycursor.execute(sql, value)
         code = mycursor.fetchall()
         for i in code:
-            item_label = Label(text="Item", size_hint_y=.20, color=(0.06, 0.45, .45, 1), halign="left")
+            item_label = Label(text="Item", size_hint_y=.15, color=(0.06, 0.45, .45, 1), halign="left")
 
-            item_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
+            item_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.15,
                                    hint_text="Metal",text=str(i[1]))
+            date_label = Label(text="Date", size_hint_y=.15, color=(0.06, 0.45, .45, 1))
+            date_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.15,
+                                  hint_text="Enter Date",
+                                  text=str(datetime.strftime(datetime.strptime(i[4], '%d-%m-%Y'), '%d-%m-%Y')))
 
             des_label = Label(text="Description", size_hint_y=.40, color=(0.06, 0.45, .45, 1))
             des_text = TextInput(write_tab=False, multiline=True, padding=[5, 0, 0, 0], size_hint_y=.40,
@@ -1660,10 +1732,12 @@ class OperatorWindow(BoxLayout):
                              on_release=lambda x: self.edit_approval_exec(item_text.text,
 
                                                                    des_text.text,
+                                                                          date_text.text,
 
                                                                          str(i[0])
                                                                    ))
             details_label.add_widget(item_label)
+            details_label.add_widget(date_label)
 
             details_label.add_widget(des_label)
 
@@ -1671,6 +1745,7 @@ class OperatorWindow(BoxLayout):
             details_label.add_widget(btn_close)
 
             details_text.add_widget(item_text)
+            details_text.add_widget(date_text)
 
             details_text.add_widget(des_text)
 
@@ -1680,11 +1755,23 @@ class OperatorWindow(BoxLayout):
             details.add_widget(details_label)
             details.add_widget(details_text)
 
-    def edit_approval_exec(self, item,des,id):
+    def edit_approval_exec(self, item,des,date,id):
+        f_date = "wrong"
 
-        if item == "" or des == "":
-            self.notify.add_widget(Label(text="[color=#FF0000][b]All Fields "
-                                              "Required[/b][/color]",
+        try:
+
+
+            f_date = datetime.strptime(date, '%d-%m-%Y')
+
+        except:
+            pass
+        if item == "" or date == "":
+
+
+            f_date = "wrong"
+
+        if item == "" or f_date == "wrong":
+            self.notify.add_widget(Label(text="[color=#FF0000][b]Enter Correct Number \nor Item[/b][/color]",
                                          markup=True))
             self.notify.open()
             Clock.schedule_once(self.killswitch, 2)
@@ -1692,9 +1779,9 @@ class OperatorWindow(BoxLayout):
             mydb = DbConnect().db
             mycursor = mydb.cursor()
 
-            sql = "update approval set item=?,description=? where id=?"
+            sql = "update approval set item=?,description=?,date=? where id=?"
 
-            value = [item,des, id]
+            value = [str(item).upper(),des,date, id]
             mycursor.execute(sql, value)
             mydb.commit()
             self.popup.dismiss()
@@ -1705,7 +1792,8 @@ class OperatorWindow(BoxLayout):
         # products_container.add_widget(details)
         self.popup = Popup(title='Delete Approval Confirmation!!',
                            content=details,
-                           size_hint=(.8, .25))
+                           size_hint=(.8, .25),
+                           pos_hint={'top':.9})
 
         self.popup.open()
         lb4 = Label(text='[color=ff3333]Are You Sure to Delete?[/color][color=3333ff][/color]'+"\n\n",
@@ -1741,33 +1829,39 @@ class OperatorWindow(BoxLayout):
         # products_container.add_widget(details)
         self.popup = Popup(title='Add New Vendor',
                            content=details,
-                           size_hint=(.8, .4))
+                           size_hint=(.8, .4),
+                           pos_hint={'top':.9})
 
         self.popup.open()
 
         details_label = BoxLayout(size_hint=(.3,1),  orientation="vertical")
         details_text = BoxLayout(size_hint=(.7,1),  orientation="vertical")
-
-        fname_label = Label(text="First Name", size_hint_y=.20, color=(0.06, 0.45, .45, 1), halign="left")
-
-        fname_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
-                               hint_text="Enter Name")
-
-        address_label = Label(text="Address", size_hint_y=.20, color=(0.06, 0.45, .45, 1))
-        address_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
-                                 hint_text="Enter Address")
-        contact_label = Label(text="Contact", size_hint_y=.20, color=(0.06, 0.45, .45, 1))
-        contact_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
-                                 hint_text="Enter Contact Number")
+        def set_focus(id,arg):
+            id.focus=True
 
 
         btn_close = Button(text="Close", on_release=self.popup.dismiss, size_hint_y=.20, color=(1, 1, 1, 1))
         btn_add = Button(text="Add Vendor", size_hint_y=.20, color=(1, 1, 1, 1),
                          on_release=lambda x: self.add_vendor(fname_text.text,
 
-                                                                address_text.text,
-                                                                contact_text.text,
-                                                                ))
+                                                              address_text.text,
+                                                              contact_text.text,
+                                                              ))
+
+        contact_label = Label(text="Contact", size_hint_y=.20, color=(0.06, 0.45, .45, 1))
+        contact_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
+                                 hint_text="Enter Contact Number",on_text_validate=partial(set_focus,btn_close))
+
+        address_label = Label(text="Address", size_hint_y=.20, color=(0.06, 0.45, .45, 1))
+        address_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
+                                 hint_text="Enter Address",on_text_validate=partial(set_focus,contact_text))
+
+        fname_label = Label(text="First Name", size_hint_y=.20, color=(0.06, 0.45, .45, 1), halign="left")
+
+        fname_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
+                               hint_text="Enter Name", on_text_validate=partial(set_focus, address_text))
+
+
         details_label.add_widget(fname_label)
 
         details_label.add_widget(address_label)
@@ -1784,6 +1878,7 @@ class OperatorWindow(BoxLayout):
 
         details.add_widget(details_label)
         details.add_widget(details_text)
+        self.popup.bind(on_open=partial(set_focus,fname_text))
 
     def add_vendor(self, fname, address, contact):
 
@@ -1815,33 +1910,40 @@ class OperatorWindow(BoxLayout):
         # products_container.add_widget(details)
         self.popup = Popup(title='Add New Booking',
                            content=details,
-                           size_hint=(.8, .4))
+                           size_hint=(.8, .4),
+                           pos_hint={'top':.9})
 
         self.popup.open()
 
         details_label = BoxLayout(size_hint=(.3,1), orientation="vertical")
         details_text = BoxLayout(size_hint=(.7,1),  orientation="vertical")
 
-        metal_label = Label(text="Metal", size_hint_y=.20, color=(0.06, 0.45, .45, 1), halign="left")
-
-        metal_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
-                               hint_text="Metal")
-
-        weight_label = Label(text="Weight", size_hint_y=.20, color=(0.06, 0.45, .45, 1))
-        weight_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
-                                 hint_text="Enter weight")
-        rate_label = Label(text="Rate", size_hint_y=.20, color=(0.06, 0.45, .45, 1))
-        rate_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
-                                 hint_text="Enter Rate")
-
+        def set_focus(id, arg):
+            id.focus = True
 
         btn_close = Button(text="Close", on_release=self.popup.dismiss, size_hint_y=.20, color=(1, 1, 1, 1))
         btn_add = Button(text="Add Booking", size_hint_y=.20, color=(1, 1, 1, 1),
                          on_release=lambda x: self.add_booking(metal_text.text,
 
-                                                                weight_text.text,
-                                                                rate_text.text,
-                                                                ))
+                                                               weight_text.text,
+                                                               rate_text.text,
+                                                               ))
+        rate_label = Label(text="Rate/gm", size_hint_y=.20, color=(0.06, 0.45, .45, 1))
+        rate_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
+                              hint_text="Enter Rate")
+
+
+        weight_label = Label(text="Weight", size_hint_y=.20, color=(0.06, 0.45, .45, 1))
+        weight_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
+                                 hint_text="Enter weight", on_text_validate=partial(set_focus, rate_text))
+
+
+        metal_label = Label(text="Metal", size_hint_y=.20, color=(0.06, 0.45, .45, 1), halign="left")
+
+        metal_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
+                               hint_text="Metal", on_text_validate=partial(set_focus, weight_text))
+        self.popup.bind(on_open=partial(set_focus, metal_text))
+
         details_label.add_widget(metal_label)
 
         details_label.add_widget(weight_label)
@@ -1858,6 +1960,7 @@ class OperatorWindow(BoxLayout):
 
         details.add_widget(details_label)
         details.add_widget(details_text)
+
 
     def add_booking(self, metal, weight, rate):
         f_weight = "wrong"
@@ -1893,7 +1996,7 @@ class OperatorWindow(BoxLayout):
                   "weight,rate,vendor_id,date) " \
                   "values(?,?,?,?,?)"
 
-            value = [metal, weight, rate,self.vendor_id,datetime.now().strftime("%d-%m-%Y")]
+            value = [str(metal).upper(), weight, rate,self.vendor_id,datetime.now().strftime("%d-%m-%Y")]
             mycursor.execute(sql, value)
             mydb.commit()
             self.popup.dismiss()
@@ -1907,24 +2010,30 @@ class OperatorWindow(BoxLayout):
         # products_container.add_widget(details)
         self.popup = Popup(title='Add New Delivery',
                            content=details,
-                           size_hint=(.8, .4))
+                           size_hint=(.8, .4),
+                           pos_hint={'top':.9})
 
         self.popup.open()
 
         details_label = BoxLayout(size_hint=(.3,1), orientation="vertical")
         details_text = BoxLayout(size_hint=(.7,1), orientation="vertical")
 
-        metal_label = Label(text="Metal", size_hint_y=.20, color=(0.06, 0.45, .45, 1), halign="left")
+        def set_focus(id, arg):
+            id.focus = True
 
-        metal_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
-                               hint_text="Metal")
+        rate_label = Label(text="Rate/gm", size_hint_y=.20, color=(0.06, 0.45, .45, 1))
+        rate_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
+                              hint_text="Enter Rate")
 
         weight_label = Label(text="Weight", size_hint_y=.20, color=(0.06, 0.45, .45, 1))
         weight_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
-                                 hint_text="Enter weight")
-        rate_label = Label(text="Rate", size_hint_y=.20, color=(0.06, 0.45, .45, 1))
-        rate_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
-                                 hint_text="Enter Rate")
+                                hint_text="Enter weight", on_text_validate=partial(set_focus, rate_text))
+
+        metal_label = Label(text="Metal", size_hint_y=.20, color=(0.06, 0.45, .45, 1), halign="left")
+
+        metal_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
+                               hint_text="Metal", on_text_validate=partial(set_focus, weight_text))
+        self.popup.bind(on_open=partial(set_focus, metal_text))
 
 
         btn_close = Button(text="Close", on_release=self.popup.dismiss, size_hint_y=.20, color=(1, 1, 1, 1))
@@ -1985,7 +2094,7 @@ class OperatorWindow(BoxLayout):
                   "weight,rate,vendor_id,date) " \
                   "values(?,?,?,?,?)"
 
-            value = [metal, weight, rate,self.vendor_id,datetime.now().strftime("%d-%m-%Y")]
+            value = [str(metal).upper(), weight, rate,self.vendor_id,datetime.now().strftime("%d-%m-%Y")]
             mycursor.execute(sql, value)
             mydb.commit()
             sql = "select max(id) from delivery"
@@ -2012,22 +2121,27 @@ class OperatorWindow(BoxLayout):
         # products_container.add_widget(details)
         self.popup = Popup(title='Add New Approval',
                            content=details,
-                           size_hint=(.8, .4))
+                           size_hint=(.8, .4),
+                           pos_hint={'top':.9})
 
         self.popup.open()
 
         details_label = BoxLayout(size_hint=(.3,1), orientation="vertical")
         details_text = BoxLayout(size_hint=(.7,1), orientation="vertical")
 
-        item_label = Label(text="Item", size_hint_y=.20, color=(0.06, 0.45, .45, 1), halign="left")
-
-        item_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
-                               hint_text="Item")
+        def set_focus(id, arg):
+            id.focus = True
 
         des_label = Label(text="Description", size_hint_y=.40, color=(0.06, 0.45, .45, 1))
         des_text = TextInput(write_tab=False, multiline=True, padding=[5, 0, 0, 0], size_hint_y=.40,
-                                 hint_text="Enter Description")
+                             hint_text="Enter Description")
 
+        item_label = Label(text="Item", size_hint_y=.20, color=(0.06, 0.45, .45, 1), halign="left")
+
+        item_text = TextInput(write_tab=False, multiline=False, padding=[5, 0, 0, 0], size_hint_y=.20,
+                               hint_text="Item", on_text_validate=partial(set_focus, des_text))
+
+        self.popup.bind(on_open=partial(set_focus, item_text))
 
 
         btn_close = Button(text="Close", on_release=self.popup.dismiss, size_hint_y=.20, color=(1, 1, 1, 1))
@@ -2070,7 +2184,7 @@ class OperatorWindow(BoxLayout):
                   "description,vendor_id,date) " \
                   "values(?,?,?,?)"
 
-            value = [item, des,self.vendor_id,datetime.now().strftime("%d-%m-%Y")]
+            value = [str(item).upper(), des,self.vendor_id,datetime.now().strftime("%d-%m-%Y")]
             mycursor.execute(sql, value)
             mydb.commit()
             self.popup.dismiss()
