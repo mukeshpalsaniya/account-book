@@ -107,8 +107,77 @@ Builder.load_string("""
         y: self.parent.y 
         x: self.parent.x
 
+<ImageButtonEditZero@Button>:
+    
+    background_color: (1,1,1,0)
+    background_normal:"" 
+    size_hint_y:1
+    back_color:(0, .8, .8, 1)
+    border_radius:[18]
+    canvas.before:
+        Color:
+            rgba:self.back_color
+        RoundedRectangle:
+            size: self.size
+            pos:self.pos
+            radius:[18]
+    Image:
+        source: './icons8-edit-property-80.png'
+        size: self.parent.size
+        keep_ratio: True
+        allow_stretch: True
+        y: self.parent.y 
+        x: self.parent.x
+
+<ImageButtonDeleteZero@Button>:
+    
+    background_color: (1,1,1,0)
+    background_normal:"" 
+    size_hint_y:1
+    back_color:(0, .8, .8, 1)
+    border_radius:[18]
+    canvas.before:
+        Color:
+            rgba:self.back_color
+        RoundedRectangle:
+            size: self.size
+            pos:self.pos
+            radius:[18]
+    Image:
+        source: './icons8-delete-bin-64.png'
+        size: self.parent.size
+        keep_ratio: True
+        allow_stretch: True
+        y: self.parent.y 
+        x: self.parent.x
 
 <CanvasWrappedButton@Button>:
+    background_color:(0,0,0,0)
+    background_normal:""
+    back_color:(0.06, .47, .47, 1)
+    border_radius:[18]
+    canvas.before:
+        Color:
+            rgba:self.back_color
+        RoundedRectangle:
+            size: self.size
+            pos:self.pos
+            radius:[18]
+
+<CanvasWrappedButtonZero@Button>:
+    background_color:(0,0,0,0)
+    background_normal:""
+    back_color:(0.00, .8, .8, 1)
+    border_radius:[18]
+    canvas.before:
+        Color:
+            rgba:self.back_color
+        RoundedRectangle:
+            size: self.size
+            pos:self.pos
+            radius:[18]
+
+<CanvasWrappedButtonDelivered@Button>:
     background_color:(0,0,0,0)
     background_normal:""
     back_color:(0.06, .47, .47, 1)
@@ -218,6 +287,8 @@ Builder.load_string("""
                                 id:label_c
                                 size_hint_x:.15
                                 bold: True
+                                on_release:
+                                on_release:root.set_vendor_scrn()
                                 
                                 
                             TextInput:
@@ -401,6 +472,24 @@ class CanvasWrappedButton(Button):
             self.setter('text_size')(self, (self.width, None)),
             texture_size=lambda *x: self.setter('height')(self, self.texture_size[1]))
 
+class CanvasWrappedButtonZero(Button):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.bind(
+            width=lambda *x:
+            self.setter('text_size')(self, (self.width, None)),
+            texture_size=lambda *x: self.setter('height')(self, self.texture_size[1]))
+
+class CanvasWrappedButtonDelivered(Button):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.bind(
+            width=lambda *x:
+            self.setter('text_size')(self, (self.width, None)),
+            texture_size=lambda *x: self.setter('height')(self, self.texture_size[1]))
+
 class CanvasWrappedButtonHeader(Button):
 
     def __init__(self, **kwargs):
@@ -429,6 +518,11 @@ class ImageButtonEdit(Button):
 class ImageButtonDelete(Button):
     pass
 
+class ImageButtonDeleteZero(Button):
+    pass
+class ImageButtonEditZero(Button):
+    pass
+
 class CanvasGridLayout(GridLayout):
     pass
 
@@ -445,9 +539,12 @@ class OperatorWindow(BoxLayout):
         self.vendor_id =0
         self.back_count = 0
         Window.bind(on_keyboard=self.on_key)
+        self.set_vendor_scrn()
+
+
+    def set_vendor_scrn(self):
         self.ids.scrn_mngr_upper.current = "vendor_content"
         self.get_vendor_list()
-
 
     def stop_app(self,arg):
 
@@ -795,6 +892,10 @@ class OperatorWindow(BoxLayout):
             details.add_widget(details_label)
             details.add_widget(details_text)
 
+        def set_focus(id, arg):
+            id.focus = True
+        self.popup.bind(on_open=partial(set_focus, name_text))
+
 
     def delete_vendor_exec(self, id):
         self.popup.dismiss()
@@ -825,7 +926,7 @@ class OperatorWindow(BoxLayout):
 
             sql = "update vendor set name=?,address=?,contact=? where id=?"
 
-            value = [name, ad, con, id]
+            value = [str(name).upper(), ad, con, id]
             mycursor.execute(sql, value)
             mydb.commit()
             self.popup.dismiss()
@@ -843,14 +944,44 @@ class OperatorWindow(BoxLayout):
             container = self.ids.book_preview
 
             container.clear_widgets()
-            header_layout = GridLayout(cols=1, spacing=10,
-                                       size_hint=(.12, .1) )
+            mydb = DbConnect().db
+            mycursor = mydb.cursor()
+
+            sql = "select sum(b.weight)-sum(del.weight),b.metal" \
+                  "  from book b left join (select d.booking_id as  " \
+                  "booking_id, sum(weight) as weight from delivery d " \
+                  "where d.vendor_id=? group by d.booking_id) del on " \
+                  "del.booking_id=b.id where b.vendor_id=? and " \
+                  "b.delivered = 'no' group by b.metal"
+            value = [self.vendor_id, self.vendor_id]
+            mycursor.execute(sql, value)
+            code1 = mycursor.fetchall()
+            gold_balance = 0
+            silver_balance = 0
+            for i in code1:
+                if str(i[1]).upper() == "GOLD":
+                    gold_balance = str(i[0])
+                elif str(i[1]).upper() == "SILVER":
+                    silver_balance = str(i[0])
+
+            header_layout = GridLayout(cols=3, spacing=10,
+                                       size_hint=(1, .12) )
             btn_add = ImageButtonAdd(
 
-                size_hint_x=.16,
+                size_hint=(.1,1),
                 on_release = partial(self.add_new_booking))
+            btn_add1 = CanvasWrappedButton(
+                text=" Gold Balance:\n " + str(gold_balance) + " gm",
+                size_hint=(.35, 1), font_size=40,
+            on_release=partial(self.show_summary, "GOLD" ))
+            btn_add2 = CanvasWrappedButton(
+                text=" Silver Balance:\n " + str(silver_balance) + " gm",
+                size_hint=(.35, 1), font_size=40,
+            on_release=partial(self.show_summary, "SILVER" ))
             container.add_widget(header_layout)
             header_layout.add_widget(btn_add)
+            header_layout.add_widget(btn_add1)
+            header_layout.add_widget(btn_add2)
 
             container.add_widget(details)
 
@@ -870,10 +1001,14 @@ class OperatorWindow(BoxLayout):
             layout.bind(minimum_height=layout.setter('height'))
             root.add_widget(layout)
 
-            mydb = DbConnect().db
-            mycursor = mydb.cursor()
-            sql = "select * from book where vendor_id=? order by date desc"
-            value = [self.vendor_id]
+
+
+            sql ="select b.id,b.vendor_id,b.metal,b.weight,b.rate,b.date," \
+                 "b.delivered,del.weight  from book b left join " \
+                 "(select d.booking_id as  booking_id, sum(weight) as " \
+                 "weight from delivery d where d.vendor_id=? group by d.booking_id) " \
+                 "del on del.booking_id=b.id where b.vendor_id=?"
+            value = [self.vendor_id,self.vendor_id]
             mycursor.execute(sql, value)
             code1 = mycursor.fetchall()
             code = []
@@ -894,27 +1029,414 @@ class OperatorWindow(BoxLayout):
                     if len(metal) > 10:
                         metal = metal[:10] + "..."
                     wt = str(i[3])
+                    d_wt = 0
+                    if i[7] is not None:
+                        d_wt = str(i[7])
                     if len(wt) > 12:
                         wt = wt[:12] + "..."
                     rt = str(i[4])
                     if len(rt) > 12:
                         rt = rt[:12] + "..."
                     dt = str(i[5])
-                    btn = CanvasWrappedButton(
-                        text=" Metal: " + str(metal) + "\n Weight: " + str(wt) + " gm\n Rate/gm : " + str(rt)+ "\n Date: " + str(dt),
-                        size_hint=(.7, None), height=Window.height / 6, font_size=40,
-                        )
-                    edit_btn = ImageButtonEdit(
 
-                        size_hint=(.1, None),
-                        on_release=partial(self.edit_booking,str(i[0])) )
-                    dlt_btn = ImageButtonDelete(
-                        
-                        size_hint=(.1, None), height=Window.height / 6, font_size=40,
-                        on_release=partial(self.dlt_booking,str(i[0])) )
+                    if str(i[6]) == "yes":
+                        btn = CanvasWrappedButtonZero(
+                            text=" Metal: " + str(metal) + "\n Wt: " + str(wt) + "  D: " + str(
+                                d_wt) + " gm\n Rate/gm : " + str(rt) + "\n Date: " + str(dt),
+                            size_hint=(.7, None), height=Window.height / 6, font_size=40,
+                            on_release=partial(self.show_booking, str(i[0])))
+                        edit_btn = ImageButtonEditZero(
+
+                            size_hint=(.1, None),
+                            on_release=partial(self.edit_booking, str(i[0])))
+                        dlt_btn = ImageButtonDeleteZero(
+
+                            size_hint=(.1, None), height=Window.height / 6, font_size=40,
+                            on_release=partial(self.dlt_booking, str(i[0])))
+
+                    else:
+                        btn = CanvasWrappedButton(
+                            text=" Metal: " + str(metal) + "\n Wt: " + str(wt) +"  D: "+str(d_wt) +" gm\n Rate/gm : " + str(rt)+ "\n Date: " + str(dt),
+                            size_hint=(.7, None), height=Window.height / 6, font_size=40,
+                            on_release=partial(self.show_booking,str(i[0])))
+                        edit_btn = ImageButtonEdit(
+
+                            size_hint=(.1, None),
+                            on_release=partial(self.edit_booking,str(i[0])) )
+                        dlt_btn = ImageButtonDelete(
+
+                            size_hint=(.1, None), height=Window.height / 6, font_size=40,
+                            on_release=partial(self.dlt_booking,str(i[0])) )
                     layout.add_widget(btn)
                     layout.add_widget(edit_btn)
                     layout.add_widget(dlt_btn)
+
+    def show_summary(self,metal,arg):
+
+        details_master = BoxLayout(size_hint_y=1, pos_hint={'top': 1},
+                                   orientation="vertical")
+        # products_container.add_widget(details)
+        self.popup = Popup(title=str(metal) + ' Booking Details',
+                           content=details_master,
+                           size_hint=(1, .8),
+                           pos_hint={'top': .9})
+        self.popup.open()
+
+        details = BoxLayout(size_hint=(1, .5), pos_hint={'top': 1}, orientation="vertical")
+        details_history = BoxLayout(size_hint=(1, .5), orientation="vertical")
+        details_master.add_widget(details)
+        details_master.add_widget(details_history)
+        btn_remove = Button(text="Cancel", size_hint=(.2,.1),
+                                        on_release=self.popup.dismiss)
+        details.add_widget(btn_remove)
+
+        # details_label = BoxLayout(size_hint=(.3, 1), orientation="vertical")
+        # details_text = BoxLayout(size_hint=(.7, 1), orientation="vertical")
+        # details.add_widget(details_label)
+        # details.add_widget(details_text)
+        def show_delivered(id,arg):
+            mydb = DbConnect().db
+            mycursor = mydb.cursor()
+            sql = "select id,weight,rate,date from delivery where booking_id=?"
+            value = [id]
+            mycursor.execute(sql, value)
+            code1 = mycursor.fetchall()
+            code = []
+            for i in code1:
+                i = list(i)
+                i.append(datetime.strptime(i[3], '%d-%m-%Y').timestamp())
+                code.append(i)
+
+            def takelast(elem):
+                return elem[-1]
+
+            code.sort(key=takelast, reverse=True)
+
+            total_weight = 0
+            root_del = ScrollView(size_hint=(1, .9),
+                              pos_hint={'center_x': .5, 'center_y': .5}, do_scroll_x=False)
+
+            layout_del = GridLayout(cols=1, spacing=5,
+                                size_hint=(1, None))
+
+            layout_del.bind(minimum_height=layout_del.setter('height'))
+            root_del.add_widget(layout_del)
+            show_summary = ""
+
+            history_label_del = Label(text=show_summary,
+                                  size_hint=(.1, None), height=Window.height / 20)
+
+            layout_del.add_widget(history_label_del)
+
+            details_history.clear_widgets()
+            details_history.add_widget(root_del)
+
+            layout1_del = GridLayout(cols=3, spacing=2,
+                                  size_hint=(1, None), height=Window.height / 20)
+            btn1_del = Button(text="weight",
+                          size_hint=(.4, .1))
+            # btn2 = Button(text="Amount",size_hint=(.19,.1))
+            # btn3 = Button(text="Paid", size_hint=(.17,.1))
+            btn4_del = Button(text="rate", size_hint=(.3, .1))
+            # btn5 = Button(text="Remaining", size_hint=(.18,.1))
+            btn6_del = Button(text="Date", size_hint=(.3, .1))
+
+            layout1_del.add_widget(btn1_del)
+            # layout11.add_widget(btn2)
+            # layout11.add_widget(btn3)
+            layout1_del.add_widget(btn4_del)
+            # layout11.add_widget(btn5)
+            layout1_del.add_widget(btn6_del)
+
+            layout_del.add_widget(layout1_del)
+            count = 1
+
+            for i in code:
+                layout10_del = GridLayout(cols=3, spacing=2,
+                                     size_hint=(1, None), height=Window.height / 20)
+                btn1_del = Button(text=str(i[1]) + " gm", size_hint=(.4, .1))
+                # btn2 = Button(text=str(i[0]), size_hint=(.19,.1))
+                # btn3 = Button(text=str(i[1]), size_hint=(.17,.1))
+
+                btn4_del = Button(text=str(str(i[2])), size_hint=(.3, .1))
+                # btn5 = Button(text=str(i[3]), size_hint=(.18,.1))
+                btn6_del = Button(text=str(datetime.strftime(datetime.strptime(i[3], '%d-%m-%Y'), '%d-%m-%Y')),
+                              size_hint=(.3, .1))
+                total_weight += round(float(i[1]), 4)
+
+                layout10_del.add_widget(btn1_del)
+                # layout1.add_widget(btn2)
+                # layout1.add_widget(btn3)
+                layout10_del.add_widget(btn4_del)
+                # layout1.add_widget(btn5)
+                layout10_del.add_widget(btn6_del)
+
+                layout_del.add_widget(layout10_del)
+                count += 1
+            history_label_del.text = "Delivered Weight: " + str(round(total_weight, 4)) + " gm"
+
+
+        mydb = DbConnect().db
+        mycursor = mydb.cursor()
+        sql = "select b.weight,b.rate,b.date,del.weight,b.id as delivered" \
+              "  from book b left join (select d.booking_id as" \
+              "  booking_id, sum(weight) as weight from delivery d " \
+              "where d.vendor_id=? group by d.booking_id) del " \
+              "on del.booking_id=b.id where b.vendor_id=? and " \
+              "b.delivered = 'no' and b.metal=?"
+        value=[self.vendor_id,self.vendor_id,metal]
+        mycursor.execute(sql,value)
+        code1 = mycursor.fetchall()
+        code = []
+        for i in code1:
+            i = list(i)
+            i.append(datetime.strptime(i[2], '%d-%m-%Y').timestamp())
+            code.append(i)
+
+        def takelast(elem):
+            return elem[-1]
+
+        code.sort(key=takelast, reverse=True)
+
+        root = ScrollView(size_hint=(1, .6),
+                          pos_hint={'center_x': .5, 'center_y': .5}, do_scroll_x=False)
+
+        layout = GridLayout(cols=1, spacing=5,
+                            size_hint=(1, None))
+
+        layout.bind(minimum_height=layout.setter('height'))
+        root.add_widget(layout)
+        show_summary = "Gold Booked Remaining"
+
+        history_label = Label(text=show_summary,
+                              size_hint=(.1, None), height=Window.height / 20)
+
+        layout.add_widget(history_label)
+
+        description_layout = GridLayout(cols=1, spacing=0,
+                                        size_hint=(1, .1))
+
+        details.add_widget(root)
+
+        layout11 = GridLayout(cols=4, spacing=2,
+                              size_hint=(1, None), height=Window.height / 20)
+        btn1 = Button(text="Total Wt",
+                      size_hint=(.25, .1))
+        # btn2 = Button(text="Amount",size_hint=(.19,.1))
+        # btn3 = Button(text="Paid", size_hint=(.17,.1))
+        btn4 = Button(text="rate", size_hint=(.25, .1))
+        # btn5 = Button(text="Remaining", size_hint=(.18,.1))
+        btn6 = Button(text="Date", size_hint=(.25, .1))
+        btn8 = Button(text="Balance", size_hint=(.25, .1))
+
+        layout11.add_widget(btn1)
+        # layout11.add_widget(btn2)
+        # layout11.add_widget(btn3)
+        layout11.add_widget(btn4)
+        # layout11.add_widget(btn5)
+        layout11.add_widget(btn6)
+        layout11.add_widget(btn8)
+
+        layout.add_widget(layout11)
+        count = 1
+        total_weight = 0
+
+        for i in code:
+            layout1 = GridLayout(cols=4, spacing=2,
+                                 size_hint=(1, None), height=Window.height / 20)
+            btn1 = Button(text=str(i[0]) + " gm", size_hint=(.25, .1),
+                          on_release=partial(show_delivered,i[4]))
+            # btn2 = Button(text=str(i[0]), size_hint=(.19,.1))
+            # btn3 = Button(text=str(i[1]), size_hint=(.17,.1))
+
+            btn4 = Button(text=str(str(i[1])), size_hint=(.25, .1),
+                          on_release=partial(show_delivered,i[4]))
+            # btn5 = Button(text=str(i[3]), size_hint=(.18,.1))
+            btn6 = Button(text=str(datetime.strftime(datetime.strptime(i[2], '%d-%m-%Y'), '%d-%m-%Y')),
+                          size_hint=(.25, .1),on_release=partial(show_delivered,i[4]))
+            balance = 0
+            if i[3] is not None:
+                balance = round(float(i[0]),4) - round(float(i[3]),4)
+            else:
+                balance = round(float(i[0]),4)
+            btn8 = Button(text=str(round(balance,4)) + " gm", size_hint=(.25, .1),
+                          on_release=partial(show_delivered,i[4]))
+            total_weight += balance
+
+
+            layout1.add_widget(btn1)
+            # layout1.add_widget(btn2)
+            # layout1.add_widget(btn3)
+            layout1.add_widget(btn4)
+            # layout1.add_widget(btn5)
+            layout1.add_widget(btn6)
+            layout1.add_widget(btn8)
+
+            layout.add_widget(layout1)
+            count += 1
+        history_label.text = "Gold Booked Balance: " + str(round(total_weight, 4)) + " gm"
+
+
+
+    def show_booking(self,id,arg):
+        id = int(id)
+        details_master = BoxLayout(size_hint_y=1, pos_hint={'top': 1},
+                                   orientation="vertical")
+        # products_container.add_widget(details)
+        self.popup = Popup(title='Booking Details',
+                           content=details_master,
+                           size_hint=(1, .8),
+                           pos_hint={'top': .9})
+        self.popup.open()
+        details = BoxLayout(size_hint=(1, .3), pos_hint={'top': 1})
+        details_history = BoxLayout(size_hint=(1, .6), orientation="vertical")
+        details_master.add_widget(details)
+        details_master.add_widget(details_history)
+
+        details_label = BoxLayout(size_hint=(.3, 1), orientation="vertical")
+        details_text = BoxLayout(size_hint=(.7, 1), orientation="vertical")
+        details.add_widget(details_label)
+        details.add_widget(details_text)
+
+        mydb = DbConnect().db
+        mycursor = mydb.cursor()
+
+        sql ="select b.id,b.metal,b.weight,b.rate," \
+             "b.weight-(select sum(weight) from " \
+             "delivery where booking_id=?) as remaining " \
+             "from book b where id =?"
+        value = [id,id]
+        mycursor.execute(sql, value)
+        code = mycursor.fetchall()
+        metal = code[0][1]
+        rate = code[0][3]
+        remaining = code[0][4]
+        if str(code[0][4]) == "None":
+            remaining = code[0][2]
+
+
+        book_label = Label(text="Booked", size_hint_y=.20, color=(0.06, 0.45, .45, 1))
+        book_label_1 = Label(text=str(code[0][2]), size_hint_y=.20, color=(0.06, 0.45, .45, 1))
+        remaining_label = Label(text="Remaining", size_hint_y=.20, color=(0.06, 0.45, .45, 1))
+        remaining_label_1 = Label(text=str(remaining), size_hint_y=.20, color=(0.06, 0.45, .45, 1))
+        del_label = Label(text="Get Delivery", size_hint_y=.20, color=(0.06, 0.45, .45, 1))
+        del_text = TextInput(hint_text="Weight in GM", multiline=False, size_hint_y=.20,
+                             text=str(remaining))
+
+        btn_submit_add_payment = Button(text="Add Delivery", size_hint_y=.20,
+                                        on_release=lambda x: self.add_delivery(str(metal),
+                                                                               del_text.text,
+                                                                               rate,
+                                                                               id,
+                                                                               remaining))
+        btn_remove_add_payment = Button(text="Cancel", size_hint_y=.20,
+                                        on_release=self.popup.dismiss)
+
+        # bx_add_payment.add_widget(lb_add_payment)
+        details_label.add_widget(book_label)
+        details_label.add_widget(remaining_label)
+        details_label.add_widget(del_label)
+
+        details_label.add_widget(btn_remove_add_payment)
+
+        details_text.add_widget(book_label_1)
+        details_text.add_widget(remaining_label_1)
+        details_text.add_widget(del_text)
+        details_text.add_widget(btn_submit_add_payment)
+
+        mydb = DbConnect().db
+        mycursor = mydb.cursor()
+        sql = "select id,weight,rate,date from delivery where booking_id=?"
+        value = [id]
+        mycursor.execute(sql, value)
+        code1 = mycursor.fetchall()
+        code = []
+        for i in code1:
+            i = list(i)
+            i.append(datetime.strptime(i[3], '%d-%m-%Y').timestamp())
+            code.append(i)
+
+        def takelast(elem):
+            return elem[-1]
+
+        code.sort(key=takelast, reverse=True)
+
+        total_weight = 0
+
+
+
+
+
+
+        root = ScrollView(size_hint=(1, .6),
+                          pos_hint={'center_x': .5, 'center_y': .5}, do_scroll_x=False)
+
+        layout = GridLayout(cols=1, spacing=5,
+                            size_hint=(1, None))
+
+        layout.bind(minimum_height=layout.setter('height'))
+        root.add_widget(layout)
+        show_summary = ""
+
+        history_label = Label(text=show_summary,
+                              size_hint=(.1, None), height=Window.height / 20)
+
+        layout.add_widget(history_label)
+
+        description_layout = GridLayout(cols=1, spacing=0,
+                                        size_hint=(1, .1))
+        details_history.add_widget(description_layout)
+        details_history.add_widget(root)
+
+
+
+        layout11 = GridLayout(cols=3, spacing=2,
+                              size_hint=(1, None), height=Window.height / 20)
+        btn1 = Button(text="weight",
+                      size_hint=(.4, .1))
+        # btn2 = Button(text="Amount",size_hint=(.19,.1))
+        # btn3 = Button(text="Paid", size_hint=(.17,.1))
+        btn4 = Button(text="rate", size_hint=(.3, .1))
+        # btn5 = Button(text="Remaining", size_hint=(.18,.1))
+        btn6 = Button(text="Date", size_hint=(.3, .1))
+
+        layout11.add_widget(btn1)
+        # layout11.add_widget(btn2)
+        # layout11.add_widget(btn3)
+        layout11.add_widget(btn4)
+        # layout11.add_widget(btn5)
+        layout11.add_widget(btn6)
+
+
+        layout.add_widget(layout11)
+        count = 1
+
+        for i in code:
+            layout1 = GridLayout(cols=3, spacing=2,
+                                 size_hint=(1, None), height=Window.height / 20)
+            btn1 = Button(text=str(i[1]) + " gm", size_hint=(.4, .1))
+            # btn2 = Button(text=str(i[0]), size_hint=(.19,.1))
+            # btn3 = Button(text=str(i[1]), size_hint=(.17,.1))
+
+
+            btn4 = Button(text=str(str(i[2])), size_hint=(.3, .1))
+            # btn5 = Button(text=str(i[3]), size_hint=(.18,.1))
+            btn6 = Button(text=str(datetime.strftime(datetime.strptime(i[3], '%d-%m-%Y'), '%d-%m-%Y')),
+                          size_hint=(.3, .1))
+            total_weight += round(float(i[1]), 4)
+
+            layout1.add_widget(btn1)
+            # layout1.add_widget(btn2)
+            # layout1.add_widget(btn3)
+            layout1.add_widget(btn4)
+            # layout1.add_widget(btn5)
+            layout1.add_widget(btn6)
+
+
+            layout.add_widget(layout1)
+            count += 1
+        history_label.text = "Delivered Weight: " +str(round(total_weight,4)) + " gm"
+
     def edit_booking(self,id,arg):
         details = BoxLayout(size_hint_y=1, pos_hint={'top': 1})
         # products_container.add_widget(details)
@@ -978,6 +1500,11 @@ class OperatorWindow(BoxLayout):
 
             details.add_widget(details_label)
             details.add_widget(details_text)
+
+        def set_focus(id, arg):
+            id.focus = True
+
+        self.popup.bind(on_open=partial(set_focus, metal_text))
 
     def edit_booking_exec(self, metal, weight, rate,date,id):
         f_weight = "wrong"
@@ -1128,8 +1655,13 @@ class OperatorWindow(BoxLayout):
 
             mydb = DbConnect().db
             mycursor = mydb.cursor()
-            sql = "select * from delivery where vendor_id=? order by date desc"
-            value = [self.vendor_id]
+
+            sql = "select d.*,pay.paid  from delivery d left join " \
+                  "(select p.delivery_id as  delivery_id, sum(paying) " \
+                  "as paid from payment p where p.vendor_id=? " \
+                  "group by p.delivery_id) pay on pay.delivery_id=d.id " \
+                  "where d.vendor_id=?"
+            value = [self.vendor_id,self.vendor_id]
             mycursor.execute(sql, value)
             code1 = mycursor.fetchall()
             code = []
@@ -1154,19 +1686,41 @@ class OperatorWindow(BoxLayout):
                     rt = str(i[3])
                     if len(rt) > 12:
                         rt = rt[:12] + "..."
+                    paid = 0
+                    if i[7] is not None:
+                        paid = int(i[7])
                     dt = str(i[4])
-                    btn = CanvasWrappedButton(
-                        text=" " + str(metal) + " Wt: " + str(wt) + " gm\n Rs:" +str(int(round(float(i[2]),4)*round(float(i[3]),4))) +"\n Rate/gm: " + str(rt) + "\n Date: " + str(dt),
-                        size_hint=(.7, None), height=Window.height / 6, font_size=40,
-                         on_release=partial(self.show_payment, str(i[0])) )
-                    edit_btn = ImageButtonEdit(
+                    if str(i[6]) != "0":
+                        btn = CanvasWrappedButtonZero(
+                            text=" " + str(metal) + " Wt: " + str(wt) + " gm\n Rs:" + str(
+                                int(round(float(i[2]), 4) * round(float(i[3]), 4))) + "  Paid: " + str(
+                                paid) + "\n Rate/gm: " + str(rt) + "\n Date: " + str(dt),
+                            size_hint=(.7, None), height=Window.height / 6, font_size=40,
+                            on_release=partial(self.show_payment, str(i[0])))
+                        edit_btn = ImageButtonEditZero(
 
-                        size_hint=(.1, None), height=Window.height / 6, font_size=40,
-                         on_release=partial(self.edit_delivery, str(i[0])))
-                    dlt_btn = ImageButtonDelete(
+                            size_hint=(.1, None), height=Window.height / 6, font_size=40,
+                            on_release=partial(self.edit_delivery, str(i[0])))
+                        dlt_btn = ImageButtonDeleteZero(
 
-                        size_hint=(.1, None), height=Window.height / 6, font_size=40,
-                         on_release=partial(self.dlt_delivery, str(i[0])))
+                            size_hint=(.1, None), height=Window.height / 6, font_size=40,
+                            on_release=partial(self.dlt_delivery, str(i[0])))
+
+                    else:
+                        btn = CanvasWrappedButton(
+                            text=" " + str(metal) + " Wt: " + str(wt) + " gm\n Rs:" + str(
+                                int(round(float(i[2]), 4) * round(float(i[3]), 4))) + "  Paid: " + str(
+                                paid) + "\n Rate/gm: " + str(rt) + "\n Date: " + str(dt),
+                            size_hint=(.7, None), height=Window.height / 6, font_size=40,
+                            on_release=partial(self.show_payment, str(i[0])))
+                        edit_btn = ImageButtonEdit(
+
+                            size_hint=(.1, None), height=Window.height / 6, font_size=40,
+                            on_release=partial(self.edit_delivery, str(i[0])))
+                        dlt_btn = ImageButtonDelete(
+
+                            size_hint=(.1, None), height=Window.height / 6, font_size=40,
+                            on_release=partial(self.dlt_delivery, str(i[0])))
                     layout.add_widget(btn)
                     layout.add_widget(edit_btn)
                     layout.add_widget(dlt_btn)
@@ -1204,6 +1758,7 @@ class OperatorWindow(BoxLayout):
                                                                                         date_text.text))
         btn_remove_add_payment = Button(text="Cancel", size_hint_y=.25,
                                         on_release=self.popup.dismiss)
+
 
         # bx_add_payment.add_widget(lb_add_payment)
         details_label.add_widget(add_label)
@@ -1296,7 +1851,7 @@ class OperatorWindow(BoxLayout):
         layout.add_widget(layout11)
         count = 1
 
-        for i in code1:
+        for i in code:
             layout1 = GridLayout(cols=7, spacing=2,
                              size_hint=(1, None), height=Window.height / 20)
             btn1 = Button(text="X", size_hint=(.2,.1),on_release=partial(self.delete_payment_item,int(i[5])))
@@ -1448,6 +2003,11 @@ class OperatorWindow(BoxLayout):
 
             details.add_widget(details_label)
             details.add_widget(details_text)
+
+        def set_focus(id, arg):
+            id.focus = True
+
+        self.popup.bind(on_open=partial(set_focus, metal_text))
 
     def edit_delivery_exec(self, metal, weight, rate,date,id):
         f_weight = "wrong"
@@ -1755,6 +2315,11 @@ class OperatorWindow(BoxLayout):
             details.add_widget(details_label)
             details.add_widget(details_text)
 
+        def set_focus(id, arg):
+            id.focus = True
+
+        self.popup.bind(on_open=partial(set_focus, item_text))
+
     def edit_approval_exec(self, item,des,date,id):
         f_date = "wrong"
 
@@ -2041,7 +2606,7 @@ class OperatorWindow(BoxLayout):
                          on_release=lambda x: self.add_delivery(metal_text.text,
 
                                                                 weight_text.text,
-                                                                rate_text.text,
+                                                                rate_text.text,0,0
                                                                 ))
         details_label.add_widget(metal_label)
 
@@ -2060,7 +2625,7 @@ class OperatorWindow(BoxLayout):
         details.add_widget(details_label)
         details.add_widget(details_text)
 
-    def add_delivery(self, metal, weight, rate):
+    def add_delivery(self, metal, weight, rate,booking_id,remaining):
         f_weight = "wrong"
 
         f_rate = "wrong"
@@ -2069,49 +2634,69 @@ class OperatorWindow(BoxLayout):
         try:
             f_weight = round(float(weight), 4)
             f_rate = round(float(rate), 2)
+            f_weight_r = round(float(remaining), 4)
 
             #f_date = datetime.strptime(date, '%d-%m-%Y')
 
         except:
             pass
-        if weight == "" or rate == "":
-            f_weight = "wrong"
 
-            f_rate = "wrong"
-
-        if metal == "" or f_rate == "wrong" or f_weight == "wrong":
-            self.notify.add_widget(Label(text="[color=#FF0000][b]Enter Correct Number \nor Metal[/b][/color]",
+        if booking_id > 0 and f_weight > f_weight_r:
+            self.notify.add_widget(Label(text="[color=#FF0000][b]Delivery is greater \nthan Remaining weight[/b][/color]",
                                          markup=True))
             self.notify.open()
             Clock.schedule_once(self.killswitch, 2)
+        else:    
+            if weight == "" or rate == "":
+                f_weight = "wrong"
+
+                f_rate = "wrong"
+
+            if metal == "" or f_rate == "wrong" or f_weight == "wrong":
+                self.notify.add_widget(Label(text="[color=#FF0000][b]Enter Correct Number \nor Metal[/b][/color]",
+                                             markup=True))
+                self.notify.open()
+                Clock.schedule_once(self.killswitch, 2)
 
 
-        else:
-            mydb = DbConnect().db
-            mycursor = mydb.cursor()
+            else:
+                mydb = DbConnect().db
+                mycursor = mydb.cursor()
 
-            sql = "insert into delivery(metal," \
-                  "weight,rate,vendor_id,date) " \
-                  "values(?,?,?,?,?)"
+                sql = "insert into delivery(metal," \
+                      "weight,rate,vendor_id,date,booking_id) " \
+                      "values(?,?,?,?,?,?)"
 
-            value = [str(metal).upper(), weight, rate,self.vendor_id,datetime.now().strftime("%d-%m-%Y")]
-            mycursor.execute(sql, value)
-            mydb.commit()
-            sql = "select max(id) from delivery"
-            mycursor.execute(sql)
-            code = mycursor.fetchall()
-            id = code[0][0]
-            sql = "insert into payment(delivery_id," \
-                  "amount,date,vendor_id) " \
-                  "values(?,?,?,?)"
-            value = [id, int(round(float(weight),4)*round(float(rate),4)),  datetime.now().strftime("%d-%m-%Y"),self.vendor_id]
-            mycursor.execute(sql, value)
-            mydb.commit()
+                value = [str(metal).upper(), weight, rate,self.vendor_id,datetime.now().strftime("%d-%m-%Y"),booking_id]
+                mycursor.execute(sql, value)
+                mydb.commit()
+                sql = "select max(id) from delivery"
+                mycursor.execute(sql)
+                code = mycursor.fetchall()
+                max_id = code[0][0]
+                sql = "insert into payment(delivery_id," \
+                      "amount,date,vendor_id) " \
+                      "values(?,?,?,?)"
+                value = [max_id, int(round(float(weight),4)*round(float(rate),4)),  datetime.now().strftime("%d-%m-%Y"),self.vendor_id]
+                mycursor.execute(sql, value)
+                mydb.commit()
 
 
 
-            self.popup.dismiss()
-            self.get_delivery(1)
+                self.popup.dismiss()
+                if booking_id > 0 and f_weight == f_weight_r:
+                    sql = "update book set delivered = 'yes' where id =?"
+
+                    value = [booking_id]
+                    mycursor.execute(sql, value)
+                    mydb.commit()
+
+
+                if booking_id > 0:
+                    self.get_booking(1)
+                else:
+
+                    self.get_delivery(1)
         #self.ids.products.remove_widget(id_form.parent)
 
     def add_new_approval(self,arg):
